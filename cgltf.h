@@ -971,21 +971,25 @@ static const uint32_t GlbMagicBinChunk = 0x004E4942;
 #ifndef CGLTF_VALIDATE_ENABLE_ASSERTS
 #define CGLTF_VALIDATE_ENABLE_ASSERTS 0
 #endif
-#ifndef CGLTF_BIG_ENDIAN
-#define CGLTF_BIG_ENDIAN 0
-#endif
+
+static inline bool is_big_endian()
+{
+	const union { unsigned u; unsigned char c[sizeof(unsigned)]; } one = { 1 };
+	return one.c[0] != 1;
+}
 
 static inline uint32_t cgltf_read_uint32(const void* data)
 {
 	uint32_t u32;
 	memcpy(&u32, data, sizeof(u32));
 
-#if CGLTF_BIG_ENDIAN
-	u32 = ((u32 << 8) & 0xFF00FF00) | ((u32 >> 8) & 0xFF00FF);
-	return (u32 << 16) | (u32 >> 16);
-#else
+	if (is_big_endian())
+	{
+		u32 = ((u32 << 8) & 0xFF00FF00) | ((u32 >> 8) & 0xFF00FF);
+		u32 = (u32 << 16) | (u32 >> 16);
+	}
+
 	return u32;
-#endif
 }
 
 static inline uint32_t cgltf_read_int32(const void* data)
@@ -993,12 +997,13 @@ static inline uint32_t cgltf_read_int32(const void* data)
 	int32_t s32;
 	memcpy(&s32, data, sizeof(s32));
 
-#if CGLTF_BIG_ENDIAN
-	s32 = ((s32 << 8) & 0xFF00FF00) | ((s32 >> 8) & 0xFF00FF);
-	return (s32 << 16) | ((s32 >> 16) & 0xFFFF);
-#else
+	if (is_big_endian())
+	{
+		s32 = ((s32 << 8) & 0xFF00FF00) | ((s32 >> 8) & 0xFF00FF);
+		s32 = (s32 << 16) | ((s32 >> 16) & 0xFFFF);
+	}
+
 	return s32;
-#endif
 }
 
 static inline uint16_t cgltf_read_uint16(const void* data)
@@ -1006,11 +1011,12 @@ static inline uint16_t cgltf_read_uint16(const void* data)
 	uint16_t u16;
 	memcpy(&u16, data, sizeof(u16));
 
-#if CGLTF_BIG_ENDIAN
-	return (u16 << 8) | (u16 >> 8);
-#else
+	if (is_big_endian())
+	{
+		u16 = (u16 << 8) | (u16 >> 8);
+	}
+
 	return u16;
-#endif
 }
 
 static inline int16_t cgltf_read_int16(const void* data)
@@ -1018,23 +1024,29 @@ static inline int16_t cgltf_read_int16(const void* data)
 	int16_t s16;
 	memcpy(&s16, data, sizeof(s16));
 
-#if CGLTF_BIG_ENDIAN
-	return (s16 << 8) | ((s16 >> 8) & 0xFF);
-#else
+	if (is_big_endian())
+	{
+		s16 = (s16 << 8) | ((s16 >> 8) & 0xFF);
+	}
+
 	return s16;
-#endif
 }
 
 static inline float cgltf_read_float(const void* data)
 {
-#if CGLTF_BIG_ENDIAN
-	uint32_t u32 = cgltf_read_uint32(data);
-	return *(float*)(&u32);
-#else
 	float f;
-	memcpy(&f, data, sizeof(float));
+
+	if (is_big_endian())
+	{
+		uint32_t u32 = cgltf_read_uint32(data);
+		f = *(float*)(&u32);
+	}
+	else
+	{
+		memcpy(&f, data, sizeof(float));
+	}
+
 	return f;
-#endif
 }
 
 static void* cgltf_default_alloc(void* user, cgltf_size size)
